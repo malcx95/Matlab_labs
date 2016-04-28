@@ -1,20 +1,60 @@
 close all
 clear
-[x0, y0] = meshgrid(0:10:1000);
-x1 = 0;
-y1 = 0;
+% positions of phones
+[x0, y0] = meshgrid(0:10:2000);
+% positions of base stations
+x1 = [0 0 1000 2000 2000];
+y1 = [0 2000 1000 0 2000];
+
+% some constants
 P = 1;
-K = 4;
-sigma = 10^(-11.2);
-R = data_rate(signal_noise_ratio(distance(x0, y0, x1, y1), P, sigma, K));
-mesh(x0, y0, R./10e+6);
+kappa = 4;
+sigma2 = 10^(-11.2);
+bandwidth = 1e+7;
+
+% calculate cell coverage
+R = cellcoverage(x0, y0, x1, y1, bandwidth, P, sigma2, kappa);
+mesh(x0, y0, R./1e+6);
+% format the mesh
 xlabel('X-position [m]');
 ylabel('Y-position [m]');
-zlabel('Data rate |Mbit/s]');
-xstart = 0;
-xend = 1000;
-ystart = 0;
-yend = 1000;
-zstart = 0;
-zend = 20;
-%axis([xstart xend ystart yend zstart zend])
+zlabel('Data rate [Mbit/s]');
+
+% calculate mean value
+l = length(R);
+sum = 0;
+for i = 1:l
+    for j = 1:l
+        sum = sum + R(i, j);
+    end
+end
+
+mean = sum/(l^2);
+
+% calculate probability for no reception
+num_zeros = 0;
+for i = 1:l
+    for j = 1:l
+        if R(i, j) == 0
+            num_zeros = num_zeros + 1;
+        end
+    end
+end
+no_reception_prob = num_zeros/(l^2);
+
+fprintf('Mean: %0.2f Mbit/s\n', round(mean/1e+6, 2))
+fprintf('Probability of not having reception: %0.2f%c\n', round(no_reception_prob * 100, 2), '%')
+
+% generate histogram for 625 positions on the graph
+data_rates_rand_pos = zeros(25, 25);
+for i = 1:25
+    for j = 1:25
+        data_rates_rand_pos(i, j) = R(8 * i, 8 * j)/1e+6;
+    end
+end
+
+figure
+
+histogram(R./1e+6)
+ylabel('Occurances');
+xlabel('Data rate [Mbit/s]');
